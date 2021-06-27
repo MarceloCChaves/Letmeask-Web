@@ -5,10 +5,16 @@ import '../styles/auth.scss'
 import { Button } from '../components/Button'
 import { useHistory } from 'react-router-dom'
 import { useAuth } from '../hooks/AuthContext'
+import { FormEvent } from 'react'
+import { useState } from 'react'
+import { database } from '../services/firebase'
+import { toast, ToastContainer } from 'react-toastify'
+  import 'react-toastify/dist/ReactToastify.css'
 
 export default function Home(){
     const history = useHistory()
     const { user , signInWithGoogle } = useAuth()
+    const [roomCode, setRoomCode] = useState('')
 
     async function handleCreateRoom(){
         if(!user){
@@ -16,8 +22,27 @@ export default function Home(){
         }
         history.push('/rooms/new');
     }
+    async function handleJoin(event: FormEvent){
+        event.preventDefault()
+
+        if(roomCode.trim() === ''){
+            return
+        }
+        const roomRef = await database.ref(`rooms/${roomCode}`).get()
+
+        if(!roomRef.exists()){
+            toast.error("Essa sala não existe, tente outro código")
+            return
+        }
+        if(roomRef.val().endedAt){
+            toast.info("Sala fechada pelo administrador")
+            return
+        }
+        history.push(`/rooms/${roomCode}`)
+    }
     return(
         <div id="page-auth">
+            <ToastContainer />
             <aside>
                 <img src={illustrationImg} alt="Ilustração simbolizando perguntas e respostas"/>
                 <strong>Crie salas de Q&amp;A ao-vivo</strong>
@@ -31,10 +56,12 @@ export default function Home(){
                         Crie sua sala com o google
                     </button>
                     <div className="separator">ou entre em uma sala</div>
-                    <form>
+                    <form onSubmit={handleJoin}>
                         <input
                         type="text"
                         placeholder="Digite o código da sala"
+                        onChange={event => setRoomCode(event.target.value)}
+                        value={roomCode}
                         />
                         <Button type="submit">
                             Entrar na sala
